@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-backend
+  template:
+    metadata:
+      labels:
+        app: my-backend
+    spec:
+      containers:
+      - name: my-backend
+        image: python-backend:2.0.0      # Локальний тег нової версії
+        imagePullPolicy: Never            # Беремо строго з комп'ютера без Docker Hub
+        ports:
+        - containerPort: 5000
+        readinessProbe:                   # Розумна перевірка здоров'я
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 3          # Чекати 3 сек після старту перед першою перевіркою
+          periodSeconds: 5                # Перевіряти кожні 5 секунд
+          failureThreshold: 2             # Після 2 невдач поспіль — відключити трафік

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-backend-svc
+spec:
+  type: ClusterIP                        # Сервіс доступний тільки всередині кластера
+  selector:
+    app: my-backend                      # Пов'язуємо сервіс із нашими подами backend
+  ports:
+  - port: 80                             # Порт самого сервісу (на нього шлемо запити)
+    targetPort: 5000                     # Порт всередині контейнера Flask
