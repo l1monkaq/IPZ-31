@@ -1225,8 +1225,8 @@
         ];
 
         // КОНФІГУРАЦІЯ ХМАРНОЇ БД SUPABASE
-        const SUPABASE_URL = "YOUR_SUPABASE_URL";
-        const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+        const SUPABASE_URL = "https://oxynzydumzuoyhdngjgu.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_t6tPl00wdg1ZoQ7YshiK6w_ZHEz8Srv";
 
         const isSupabaseConfigured = SUPABASE_URL !== "YOUR_SUPABASE_URL" && SUPABASE_KEY !== "YOUR_SUPABASE_ANON_KEY";
         const supabaseClient = isSupabaseConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
