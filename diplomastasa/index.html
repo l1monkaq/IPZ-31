@@ -20,6 +20,9 @@
     <!-- Chart.js для калькулятора -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -1221,6 +1224,13 @@
             }
         ];
 
+        // КОНФІГУРАЦІЯ ХМАРНОЇ БД SUPABASE
+        const SUPABASE_URL = "YOUR_SUPABASE_URL";
+        const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+        const isSupabaseConfigured = SUPABASE_URL !== "YOUR_SUPABASE_URL" && SUPABASE_KEY !== "YOUR_SUPABASE_ANON_KEY";
+        const supabaseClient = isSupabaseConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
         // ГЛОБАЛЬНИЙ СТАН
         let cart = JSON.parse(localStorage.getItem('solar_cart')) || [];
         let reviews = JSON.parse(localStorage.getItem('solar_reviews')) || defaultReviews;
@@ -1235,7 +1245,29 @@
             initApp();
         });
 
-        function initApp() {
+        async function initApp() {
+            if (supabaseClient) {
+                try {
+                    // Отримуємо активну сесію авторизації з Supabase
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session && session.user) {
+                        currentUser = {
+                            name: session.user.user_metadata.name || session.user.email.split('@')[0],
+                            email: session.user.email
+                        };
+                    } else {
+                        currentUser = null;
+                    }
+                    
+                    // Завантажуємо відгуки з хмари
+                    await loadSupabaseReviews();
+                } catch (err) {
+                    console.error("Помилка ініціалізації Supabase:", err.message);
+                }
+            } else {
+                currentUser = JSON.parse(localStorage.getItem('solar_user')) || null;
+            }
+
             renderAuthHeader();
             renderCatalog();
             updateCartBadge();
@@ -1245,6 +1277,22 @@
             
             // За замовчуванням відкриваємо про компанію
             openTab('about');
+        }
+
+        async function loadSupabaseReviews() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('reviews')
+                    .select('*')
+                    .order('date', { ascending: false });
+                if (error) throw error;
+                if (data) {
+                    reviews = data;
+                }
+            } catch (err) {
+                console.error("Помилка завантаження відгуків:", err.message);
+            }
         }
 
         // КЛІЄНТСЬКА НАВІГАЦІЯ (ТАБИ)
@@ -1461,16 +1509,32 @@
             openCallbackModal('Прорахунок специфікації проекту');
         }
 
-        function handleCallbackSubmit(e) {
+        async function handleCallbackSubmit(e) {
             e.preventDefault();
             const name = document.getElementById('callback-name').value;
             const phone = document.getElementById('callback-phone').value;
             const comment = document.getElementById('callback-comment').value;
             const subject = document.getElementById('callback-subject').value;
 
-            // Імітуємо відправку
-            console.log("Заявка:", { name, phone, comment, subject });
-            showToast("Заявка успішно надіслана! Очікуйте дзвінка.", "📞");
+            const newOrder = {
+                name: name,
+                phone: phone,
+                comment: comment,
+                subject: subject
+            };
+
+            if (supabaseClient) {
+                try {
+                    const { error } = await supabaseClient.from('orders').insert([ newOrder ]);
+                    if (error) throw error;
+                    showToast("Заявку надіслано в хмару! Очікуйте дзвінка.", "📞");
+                } catch (err) {
+                    showToast("Помилка надсилання: " + err.message, "❌");
+                }
+            } else {
+                console.log("Заявка:", newOrder);
+                showToast("Заявка успішно надіслана! Очікуйте дзвінка.", "📞");
+            }
             
             document.getElementById('callback-form').reset();
             closeCallbackModal();
@@ -1524,24 +1588,35 @@
             });
         }
 
-        function handleReviewSubmit(e) {
+        async function handleReviewSubmit(e) {
             e.preventDefault();
             const name = document.getElementById('review-name').value;
             const city = document.getElementById('review-city').value;
             const text = document.getElementById('review-text').value;
 
             const newReview = {
-                name,
-                city,
+                name: name,
+                city: city,
                 rating: reviewRating,
-                text,
+                text: text,
                 date: new Date().toISOString().split('T')[0]
             };
 
-            reviews.push(newReview);
-            localStorage.setItem('solar_reviews', JSON.stringify(reviews));
+            if (supabaseClient) {
+                try {
+                    const { error } = await supabaseClient.from('reviews').insert([ newReview ]);
+                    if (error) throw error;
+                    showToast("Дякуємо за ваш відгук! (Збережено в хмару)", "⭐");
+                    await loadSupabaseReviews();
+                } catch (err) {
+                    showToast("Помилка надсилання: " + err.message, "❌");
+                }
+            } else {
+                reviews.push(newReview);
+                localStorage.setItem('solar_reviews', JSON.stringify(reviews));
+                showToast("Дякуємо за ваш відгук! (Локально)", "⭐");
+            }
             
-            showToast("Дякуємо за ваш відгук!", "⭐");
             document.getElementById('review-form').reset();
             setReviewRating(5);
             renderReviews();
@@ -1944,30 +2019,82 @@
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
-            const name = email.split('@')[0];
-            currentUser = { name, email };
-            localStorage.setItem('solar_user', JSON.stringify(currentUser));
-            showToast("Успішний вхід в систему!", "🔑");
-            renderAuthHeader();
-            closeAuthModal();
+            const password = document.getElementById('login-password').value;
+
+            if (supabaseClient) {
+                try {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    if (error) throw error;
+                    if (data && data.user) {
+                        currentUser = {
+                            name: data.user.user_metadata.name || email.split('@')[0],
+                            email: email
+                        };
+                        showToast("Успішний вхід в систему!", "🔑");
+                        renderAuthHeader();
+                        closeAuthModal();
+                    }
+                } catch (err) {
+                    showToast("Помилка входу: " + err.message, "❌");
+                }
+            } else {
+                const name = email.split('@')[0];
+                currentUser = { name, email };
+                localStorage.setItem('solar_user', JSON.stringify(currentUser));
+                showToast("Успішний вхід (Локально)!", "🔑");
+                renderAuthHeader();
+                closeAuthModal();
+            }
         }
 
-        function handleRegister(e) {
+        async function handleRegister(e) {
             e.preventDefault();
             const name = document.getElementById('reg-name').value;
             const email = document.getElementById('reg-email').value;
-            currentUser = { name, email };
-            localStorage.setItem('solar_user', JSON.stringify(currentUser));
-            showToast("Обліковий запис створено!", "🎉");
-            renderAuthHeader();
-            closeAuthModal();
+            const password = document.getElementById('reg-password').value;
+
+            if (supabaseClient) {
+                try {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: {
+                                name: name
+                            }
+                        }
+                    });
+                    if (error) throw error;
+                    showToast("Акаунт створено! Перевірте пошту для підтвердження.", "🎉");
+                    closeAuthModal();
+                } catch (err) {
+                    showToast("Помилка реєстрації: " + err.message, "❌");
+                }
+            } else {
+                currentUser = { name, email };
+                localStorage.setItem('solar_user', JSON.stringify(currentUser));
+                showToast("Акаунт створено (Локально)!", "🎉");
+                renderAuthHeader();
+                closeAuthModal();
+            }
         }
 
-        function handleLogout() {
+        async function handleLogout() {
             if (confirm("Ви дійсно бажаєте вийти з кабінету?")) {
+                if (supabaseClient) {
+                    try {
+                        const { error } = await supabaseClient.auth.signOut();
+                        if (error) throw error;
+                    } catch (err) {
+                        console.error("Помилка виходу з Supabase:", err.message);
+                    }
+                }
                 currentUser = null;
                 localStorage.removeItem('solar_user');
                 showToast("Ви вийшли з кабінету.", "ℹ️");
