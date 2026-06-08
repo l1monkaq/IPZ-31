@@ -656,18 +656,15 @@
             
             <div class="overflow-y-auto flex-grow">
                 <!-- Зображення та Бадж -->
-                <div class="h-64 bg-slate-100 relative">
+                <div class="h-64 bg-white relative border-b border-slate-100 flex items-center justify-center p-4">
                     <span id="p-modal-badge" class="absolute top-4 left-4 bg-brand-orange text-white text-xs font-bold px-3 py-1.5 rounded-lg z-10 shadow"></span>
-                    <img id="p-modal-img" src="" alt="" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                    <div class="absolute bottom-4 left-6 pr-12 text-white">
-                        <h3 id="p-modal-name" class="text-xl sm:text-2xl font-black">Назва товару</h3>
-                    </div>
+                    <img id="p-modal-img" src="" alt="" class="w-full h-full object-contain">
                 </div>
 
                 <!-- Контент -->
                 <div class="p-6 sm:p-8 space-y-6">
                     <div>
+                        <h3 id="p-modal-name" class="text-xl sm:text-2xl font-black text-brand-dark mb-4 uppercase tracking-tight">Назва товару</h3>
                         <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Опис рішення</h4>
                         <p id="p-modal-desc" class="text-slate-600 text-sm leading-relaxed">Детальний опис товару буде розміщений тут.</p>
                     </div>
@@ -1129,7 +1126,7 @@
                 name: "Акумулятор LiFePO4 Axioma AX-LFP-200/25.6",
                 category: "batteries",
                 price: 88000,
-                image: "https://solar.biz.ua/content/images/9/356x356l85nn0/akumuliator-litiievyi-lifepo4-25.6v-200a-ax-lfp-200-25.6-axioma-energy1607-77858912434974.jpg",
+                image: "https://solar.biz.ua/content/images/8/356x356l85nn0/akumuliator-litiievyi-lifepo4-25.6v-100a-ax-lfp-100-25.6-axioma-energy1607-21714925835812.jpg",
                 badge: "Axioma 5kWh",
                 desc: "Літієвий акумулятор ємністю 200 Аг на 25.6 В для автономних та гібридних систем електропостачання приватних будинків.",
                 specs: {
@@ -2131,9 +2128,9 @@
                 card.innerHTML = `
                     <div>
                         <!-- Зображення -->
-                        <div class="h-52 bg-slate-100 relative flex items-center justify-center overflow-hidden cursor-pointer" onclick="openProductDetailModal('${p.id}')">
+                        <div class="h-52 bg-white relative flex items-center justify-center overflow-hidden cursor-pointer" onclick="openProductDetailModal('${p.id}')">
                             <span class="absolute top-3 left-3 bg-brand-orange text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg z-10 shadow uppercase tracking-wider">${p.badge}</span>
-                            <img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500">
                             <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                                 <span class="text-white font-bold text-xs bg-black/60 px-4 py-2.5 rounded-xl border border-white/20">Детальніше</span>
                             </div>
