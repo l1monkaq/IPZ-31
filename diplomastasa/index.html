@@ -729,6 +729,47 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНЕ ВІКНО: ДЯКУЄМО ЗА ЗАМОВЛЕННЯ -->
+    <div id="thankyou-modal" class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/80 hidden">
+        <div class="bg-white rounded-3xl overflow-hidden max-w-md w-full border border-slate-200 shadow-2xl relative p-6 sm:p-8 text-center">
+            <button onclick="closeThankYouModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-900 text-xl"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            
+            <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tight">Замовлення надіслано!</h3>
+            <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                Ваша заявка успішно надіслана власнику сайту **Олександру**. Ми вже готуємо індивідуальний прорахунок для вашого об'єкту!
+            </p>
+            
+            <div class="my-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-left space-y-2.5">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Спеціаліст:</span>
+                    <span class="font-extrabold text-slate-900">Олександр</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Телефон:</span>
+                    <a href="tel:+380977095793" class="font-extrabold text-brand-orange hover:underline">+380 97 709-57-93</a>
+                </div>
+            </div>
+            
+            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">Або напишіть Олександру напряму:</p>
+            <div class="flex items-center justify-center gap-3 mb-6">
+                <a href="https://t.me/AleksNycheK" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-brand-orange hover:text-white transition text-xs font-bold text-slate-700">
+                    <i class="fa-brands fa-telegram text-base"></i> Telegram
+                </a>
+                <a href="https://www.instagram.com/nichekoleksandr/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-brand-orange hover:text-white transition text-xs font-bold text-slate-700">
+                    <i class="fa-brands fa-instagram text-base"></i> Instagram
+                </a>
+            </div>
+            
+            <button onclick="closeThankYouModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition">
+                Зрозуміло
+            </button>
+        </div>
+    </div>
+
     <!-- МОДАЛЬНЕ ВІКНО: АВТОРИЗАЦІЯ (ВХІД / РЕЄСТРАЦІЯ) -->
     <div id="auth-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 hidden">
         <div class="bg-white rounded-3xl overflow-hidden max-w-md w-full border border-slate-200 shadow-2xl relative p-6 sm:p-8">
@@ -1228,6 +1269,10 @@
         const isSupabaseConfigured = SUPABASE_URL !== "YOUR_SUPABASE_URL" && SUPABASE_KEY !== "YOUR_SUPABASE_ANON_KEY";
         const supabaseClient = isSupabaseConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+        // КОНФІГУРАЦІЯ ТЕЛЕГРАМ БОТА ДЛЯ СПОВІЩЕНЬ
+        const TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN";
+        const TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID";
+
         // ГЛОБАЛЬНИЙ СТАН
         let cart = JSON.parse(localStorage.getItem('solar_cart')) || [];
         let reviews = JSON.parse(localStorage.getItem('solar_reviews')) || defaultReviews;
@@ -1524,17 +1569,63 @@
                 try {
                     const { error } = await supabaseClient.from('orders').insert([ newOrder ]);
                     if (error) throw error;
-                    showToast("Заявку надіслано в хмару! Очікуйте дзвінка.", "📞");
+                    sendTelegramNotification(newOrder);
+                    openThankYouModal();
                 } catch (err) {
                     showToast("Помилка надсилання: " + err.message, "❌");
                 }
             } else {
                 console.log("Заявка:", newOrder);
-                showToast("Заявка успішно надіслана! Очікуйте дзвінка.", "📞");
+                sendTelegramNotification(newOrder);
+                openThankYouModal();
             }
             
             document.getElementById('callback-form').reset();
             closeCallbackModal();
+        }
+
+        function openThankYouModal() {
+            document.getElementById('thankyou-modal').classList.remove('hidden');
+        }
+
+        function closeThankYouModal() {
+            document.getElementById('thankyou-modal').classList.add('hidden');
+        }
+
+        async function sendTelegramNotification(order) {
+            const token = TELEGRAM_BOT_TOKEN;
+            const chatId = TELEGRAM_CHAT_ID;
+
+            if (token === "YOUR_TELEGRAM_BOT_TOKEN" || chatId === "YOUR_TELEGRAM_CHAT_ID") {
+                console.log("Telegram bot не налаштовано. Повідомлення не надіслано в Telegram.");
+                return;
+            }
+
+            const text = `🔔 *Нове замовлення на сайті!*\n\n` +
+                         `👤 *Ім'я:* ${order.name}\n` +
+                         `📞 *Телефон:* ${order.phone}\n` +
+                         `📋 *Тема:* ${order.subject}\n` +
+                         `💬 *Коментар:* ${order.comment || "немає коментаря"}`;
+
+            const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: text,
+                        parse_mode: 'Markdown'
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`Помилка Telegram API: ${response.statusText}`);
+                }
+                console.log("Сповіщення успішно надіслано в Telegram!");
+            } catch (err) {
+                console.error("Не вдалося надіслати сповіщення в Telegram:", err.message);
+            }
         }
 
         // ВІДГУКИ КЛІЄНТІВ
